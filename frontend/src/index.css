@@ -1,0 +1,121 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: #f4f7fb;
+  --surface: #ffffff;
+  --surface-soft: #f8fbff;
+  --text-primary: #0f172a;
+  --text-muted: #475569;
+  --border-subtle: #dbe4ef;
+  --brand: #0f6cbd;
+  --brand-soft: #e8f2fc;
+  --success: #178a55;
+  --danger: #c13f35;
+
+  font-family: 'Manrope', sans-serif;
+  color: var(--text-primary);
+  background: radial-gradient(circle at 10% 0%, #e8f4ff 0%, #f4f7fb 48%, #eef6f1 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border bg-white shadow-sm;
+    border-color: var(--border-subtle);
+  }
+
+  .section-label {
+    @apply font-mono text-xs uppercase tracking-[0.14em];
+    color: var(--text-muted);
+  }
+
+  .field-label {
+    @apply mb-2 block text-sm font-semibold;
+    color: var(--text-primary);
+  }
+
+  .field-input {
+    @apply h-11 w-full rounded-xl border bg-white px-3 text-sm outline-none transition;
+    border-color: var(--border-subtle);
+    color: var(--text-primary);
+  }
+
+  .field-input::placeholder {
+    color: #94a3b8;
+  }
+
+  .field-input:hover {
+    border-color: #bdd1e3;
+  }
+
+  .field-input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.18);
+  }
+
+  .btn-primary {
+    @apply inline-flex h-11 items-center justify-center rounded-xl px-4 text-sm font-semibold text-white transition;
+    background: linear-gradient(135deg, #0f6cbd 0%, #0c5ca2 100%);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.03);
+    box-shadow: 0 8px 16px rgba(15, 108, 189, 0.2);
+  }
+
+  .btn-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.24);
+  }
+
+  .btn-secondary {
+    @apply inline-flex h-10 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition;
+    border-color: #bdd1e3;
+    color: #0d4e87;
+    background: #f7fbff;
+  }
+
+  .btn-secondary:hover {
+    border-color: #90b1cc;
+    background: #eef6ff;
+  }
+
+  .btn-danger {
+    @apply inline-flex h-10 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition;
+    border-color: #f0cbc6;
+    color: var(--danger);
+    background: #fff8f7;
+  }
+
+  .btn-danger:hover {
+    border-color: #e6b2ab;
+  }
+
+  .btn-disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .metric-value {
+    @apply font-display text-3xl font-semibold tracking-tight;
+    color: var(--text-primary);
+  }
+}

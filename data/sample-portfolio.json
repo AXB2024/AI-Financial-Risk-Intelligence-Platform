@@ -1,0 +1,9 @@
+{
+  "name": "Balanced Tech Portfolio",
+  "assets": [
+    { "symbol": "AAPL", "weight": 0.35, "quantity": 120 },
+    { "symbol": "MSFT", "weight": 0.30, "quantity": 90 },
+    { "symbol": "NVDA", "weight": 0.20, "quantity": 25 },
+    { "symbol": "AMZN", "weight": 0.15, "quantity": 70 }
+  ]
+}
