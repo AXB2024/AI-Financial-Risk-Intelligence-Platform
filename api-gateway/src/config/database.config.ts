@@ -15,6 +15,11 @@ export function buildTypeOrmOptions(config: ConfigService): TypeOrmModuleOptions
     retryAttempts: Number(config.get<string>('DB_RETRY_ATTEMPTS', '8')),
     retryDelay: Number(config.get<string>('DB_RETRY_DELAY', '3000')),
     verboseRetryLog: true,
+    extra: {
+      max: Number(config.get<string>('DB_POOL_MAX', '10')),
+      idleTimeoutMillis: Number(config.get<string>('DB_POOL_IDLE_TIMEOUT_MS', '30000')),
+      connectionTimeoutMillis: Number(config.get<string>('DB_POOL_CONNECTION_TIMEOUT_MS', '5000')),
+    },
   };
 }
 

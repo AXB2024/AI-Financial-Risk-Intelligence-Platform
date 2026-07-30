@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { FinnhubService } from './finnhub.service';
 
 interface AssetForPricing {
   symbol: string;
   quantity: number;
   weight: number;
 }
+
+const MIN_LIVE_RETURNS_RATIO = 0.5;
 
 @Injectable()
 export class MarketDataService {
@@ -46,32 +49,29 @@ export class MarketDataService {
     ],
   };
 
-  generateAssetReturns(symbol: string, periods = 180): number[] {
-    const seed = this.getSeed(symbol);
-    const drift = ((seed % 11) - 5) / 10000;
+  constructor(private readonly finnhubService: FinnhubService) {}
 
-    return Array.from({ length: periods }, (_, i) => {
-      const harmonic = Math.sin((i + seed) / 8) * 0.011 + Math.cos((i + seed) / 17) * 0.007;
-      const noise = Math.sin((i + 1) * 0.27 + seed) * 0.0028;
-      const shockCycle = 43 + (seed % 9);
-      const shock = i > 0 && i % shockCycle === 0 ? (seed % 2 === 0 ? -0.035 : 0.028) : 0;
-      const value = drift + harmonic + noise + shock;
-
-      return Number(Math.max(-0.15, Math.min(0.15, value)).toFixed(6));
-    });
-  }
-
-  calculatePortfolioValue(assets: AssetForPricing[]): number {
-    const hasExplicitQuantities = assets.some((asset) => asset.quantity > 0);
-    if (hasExplicitQuantities) {
-      const total = assets.reduce((sum, asset) => {
-        const price = this.getPrice(asset.symbol);
-        return sum + price * Math.max(asset.quantity, 0);
-      }, 0);
-      return Number(total.toFixed(2));
+  async getAssetReturns(symbol: string, periods = 180): Promise<number[]> {
+    const live = await this.finnhubService.getDailyReturns(symbol.toUpperCase(), periods);
+    if (live && live.length >= Math.min(30, periods * MIN_LIVE_RETURNS_RATIO)) {
+      return live;
     }
 
-    return 100000;
+    return this.generateSyntheticReturns(symbol, periods);
+  }
+
+  async calculatePortfolioValue(assets: AssetForPricing[]): Promise<number> {
+    const hasExplicitQuantities = assets.some((asset) => asset.quantity > 0);
+    if (!hasExplicitQuantities) {
+      return 100000;
+    }
+
+    const prices = await Promise.all(assets.map((asset) => this.getPrice(asset.symbol)));
+    const total = assets.reduce(
+      (sum, asset, idx) => sum + prices[idx] * Math.max(asset.quantity, 0),
+      0,
+    );
+    return Number(total.toFixed(2));
   }
 
   buildPortfolioSeries(
@@ -96,21 +96,52 @@ export class MarketDataService {
     return series;
   }
 
-  getMockNews(symbols: string[]) {
-    return symbols.flatMap((symbol) => {
-      const upperSymbol = symbol.toUpperCase();
-      const texts =
-        this.mockNewsBySymbol[upperSymbol] ?? [
-          `${upperSymbol} receives mixed analyst commentary after recent earnings.`,
-          `${upperSymbol} faces changing macro conditions impacting investor sentiment.`,
-        ];
+  async getNews(symbols: string[]): Promise<Array<{ symbol: string; text: string }>> {
+    const results = await Promise.all(
+      symbols.map(async (symbol) => {
+        const upperSymbol = symbol.toUpperCase();
+        const live = await this.finnhubService.getCompanyNews(upperSymbol);
+        if (live && live.length > 0) {
+          return live
+            .filter((item) => item.headline || item.summary)
+            .map((item) => ({ symbol: upperSymbol, text: item.summary || item.headline }));
+        }
 
-      return texts.map((text) => ({ symbol: upperSymbol, text }));
-    });
+        const texts =
+          this.mockNewsBySymbol[upperSymbol] ?? [
+            `${upperSymbol} receives mixed analyst commentary after recent earnings.`,
+            `${upperSymbol} faces changing macro conditions impacting investor sentiment.`,
+          ];
+        return texts.map((text) => ({ symbol: upperSymbol, text }));
+      }),
+    );
+
+    return results.flat();
   }
 
-  getPrice(symbol: string): number {
-    return this.mockPrices[symbol.toUpperCase()] ?? 120;
+  async getPrice(symbol: string): Promise<number> {
+    const upperSymbol = symbol.toUpperCase();
+    const live = await this.finnhubService.getQuote(upperSymbol);
+    if (live !== null) {
+      return live;
+    }
+
+    return this.mockPrices[upperSymbol] ?? 120;
+  }
+
+  private generateSyntheticReturns(symbol: string, periods: number): number[] {
+    const seed = this.getSeed(symbol);
+    const drift = ((seed % 11) - 5) / 10000;
+
+    return Array.from({ length: periods }, (_, i) => {
+      const harmonic = Math.sin((i + seed) / 8) * 0.011 + Math.cos((i + seed) / 17) * 0.007;
+      const noise = Math.sin((i + 1) * 0.27 + seed) * 0.0028;
+      const shockCycle = 43 + (seed % 9);
+      const shock = i > 0 && i % shockCycle === 0 ? (seed % 2 === 0 ? -0.035 : 0.028) : 0;
+      const value = drift + harmonic + noise + shock;
+
+      return Number(Math.max(-0.15, Math.min(0.15, value)).toFixed(6));
+    });
   }
 
   private getSeed(symbol: string): number {

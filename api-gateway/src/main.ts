@@ -1,15 +1,27 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  const configuredOrigins = configService
+    .get<string>('CORS_ORIGIN', 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN', 'http://localhost:5173'),
+    origin: configuredOrigins,
     credentials: true,
+  });
+
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('X-API-Version', '1');
+    res.setHeader('X-API-Stability', 'stable');
+    next();
   });
 
   app.useGlobalPipes(

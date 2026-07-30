@@ -13,7 +13,9 @@ logger = logging.getLogger("ml-service")
 MODELS_AVAILABLE = True
 
 try:
+    from advanced_analytics import calculate_tail_risk, detect_market_regime, optimize_portfolio
     from anomaly import detect_anomaly
+    from financial_sentiment import analyze_financial_sentiment
     from risk_model import calculate_historical_var
     from sentiment import analyze_sentiment
 except Exception as import_error:  # pragma: no cover - runtime fallback guard
@@ -50,6 +52,29 @@ except Exception as import_error:  # pragma: no cover - runtime fallback guard
             for item in items
         ]
 
+    def calculate_tail_risk(weights: List[float], asset_returns: List[List[float]]) -> dict:
+        return {"var_99": 0.031, "cvar_99": 0.044, "max_drawdown": -0.12, "mode": "mock"}
+
+    def detect_market_regime(weights: List[float], asset_returns: List[List[float]]) -> dict:
+        return {"current_regime": "sideways", "probabilities": {"sideways": 1.0}, "mode": "mock"}
+
+    def optimize_portfolio(symbols: List[str], asset_returns: List[List[float]]) -> dict:
+        weight = round(1 / max(len(symbols), 1), 6)
+        return {"risk_parity": [{"symbol": symbol.upper(), "weight": weight} for symbol in symbols], "mode": "mock"}
+
+    def analyze_financial_sentiment(items: List[dict]) -> List[dict]:
+        return [
+            {
+                "symbol": item.get("symbol", "").upper(),
+                "score": 0.0,
+                "label": "neutral",
+                "confidence": 0.5,
+                "themes": ["market"],
+                "mode": "mock",
+            }
+            for item in items
+        ]
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -79,10 +104,19 @@ class AnomalyRequest(BaseModel):
 class SentimentItem(BaseModel):
     symbol: str
     text: str
+    source: str | None = None
+    url: str | None = None
+    published_at: str | None = None
 
 
 class SentimentRequest(BaseModel):
     items: List[SentimentItem] = Field(min_length=1)
+
+
+class AdvancedAnalyticsRequest(BaseModel):
+    symbols: List[str] = Field(min_length=1)
+    weights: List[float] = Field(min_length=1)
+    asset_returns: List[List[float]] = Field(min_length=1)
 
 
 @app.get("/")
@@ -137,3 +171,63 @@ def sentiment(payload: SentimentRequest) -> dict:
     items = [{"symbol": item.symbol, "text": item.text} for item in payload.items]
     results = analyze_sentiment(items)
     return {"results": results}
+
+
+@app.post("/advanced-risk")
+def advanced_risk(payload: AdvancedAnalyticsRequest) -> dict:
+    _validate_analytics_payload(payload)
+    return calculate_tail_risk(
+        weights=payload.weights,
+        asset_returns=payload.asset_returns,
+    )
+
+
+@app.post("/regime")
+def regime(payload: AdvancedAnalyticsRequest) -> dict:
+    _validate_analytics_payload(payload)
+    return detect_market_regime(
+        weights=payload.weights,
+        asset_returns=payload.asset_returns,
+    )
+
+
+@app.post("/optimize")
+def optimize(payload: AdvancedAnalyticsRequest) -> dict:
+    _validate_analytics_payload(payload)
+    return optimize_portfolio(
+        symbols=payload.symbols,
+        asset_returns=payload.asset_returns,
+    )
+
+
+@app.post("/financial-sentiment")
+def financial_sentiment(payload: SentimentRequest) -> dict:
+    items = [
+        {
+            "symbol": item.symbol,
+            "text": item.text,
+            "source": item.source,
+            "url": item.url,
+            "published_at": item.published_at,
+        }
+        for item in payload.items
+    ]
+    return {"results": analyze_financial_sentiment(items)}
+
+
+def _validate_analytics_payload(payload: AdvancedAnalyticsRequest) -> None:
+    if len(payload.weights) != len(payload.asset_returns) or len(payload.symbols) != len(payload.weights):
+        raise HTTPException(
+            status_code=400,
+            detail="symbols, weights, and asset return vectors must have matching lengths",
+        )
+
+    lengths = {len(vector) for vector in payload.asset_returns}
+    if len(lengths) != 1:
+        raise HTTPException(status_code=400, detail="asset return vectors must have same length")
+
+    if next(iter(lengths)) < 30:
+        raise HTTPException(status_code=400, detail="at least 30 periods required for premium analytics")
+
+    if abs(sum(payload.weights) - 1.0) > 1e-4:
+        raise HTTPException(status_code=400, detail="weights must sum to 1.0")
