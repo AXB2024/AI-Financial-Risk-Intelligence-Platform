@@ -82,7 +82,6 @@ export function PortfolioForm({ loading, onSubmit }: PortfolioFormProps) {
     <Card
       title="Portfolio Setup"
       subtitle="Define allocation by symbol, weight, and optional quantity. Weights must sum to 1.0000."
-      className="lg:sticky lg:top-6"
       contentClassName="space-y-6"
     >
       <form onSubmit={submit} className="space-y-6">
