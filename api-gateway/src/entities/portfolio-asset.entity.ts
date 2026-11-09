@@ -15,10 +15,10 @@ export class PortfolioAssetEntity {
   @Column({ length: 10 })
   symbol!: string;
 
-  @Column('decimal', { precision: 10, scale: 6 })
+  @Column('decimal', { precision: 28, scale: 10 })
   weight!: string;
 
-  @Column('decimal', { precision: 14, scale: 2, default: 0 })
+  @Column('decimal', { precision: 28, scale: 10, default: 0 })
   quantity!: string;
 
   @ManyToOne(() => PortfolioEntity, (portfolio) => portfolio.assets, {

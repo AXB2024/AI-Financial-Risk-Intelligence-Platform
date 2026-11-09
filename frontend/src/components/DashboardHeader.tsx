@@ -24,7 +24,7 @@ export function DashboardHeader({
             Financial Risk & Market Intelligence Dashboard
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
-            Evaluate portfolio exposure with VaR, volatility, anomaly detection, and sentiment insights
+            Evaluate portfolio exposure with VaR, volatility, anomaly detection, and news lexicon screening
             in one streamlined workflow.
           </p>
         </div>

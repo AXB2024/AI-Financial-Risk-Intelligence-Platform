@@ -39,7 +39,7 @@ RISK_THEMES = {
 }
 
 
-def analyze_financial_sentiment(items: List[Dict[str, str]]) -> List[Dict[str, object]]:
+def screen_financial_news(items: List[Dict[str, str]]) -> List[Dict[str, object]]:
     results: List[Dict[str, object]] = []
 
     for item in items:
@@ -69,7 +69,8 @@ def analyze_financial_sentiment(items: List[Dict[str, str]]) -> List[Dict[str, o
                 "source": item.get("source", "mock-news"),
                 "url": item.get("url"),
                 "published_at": item.get("published_at"),
-                "model": "financial-sentiment-v1",
+                "screen": "financial-news-lexicon-v1",
+                "method": "lexicon",
             }
         )
 

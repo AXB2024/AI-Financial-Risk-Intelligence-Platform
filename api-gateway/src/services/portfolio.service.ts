@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CreatePortfolioDto } from '../dto/create-portfolio.dto';
 import { PortfolioEntity } from '../entities/portfolio.entity';
 import { TenantEntity } from '../entities/tenant.entity';
 import { UserEntity } from '../entities/user.entity';
+import { decimal, decimalSum, toNumericString } from '../utils/round.util';
 
 @Injectable()
 export class PortfolioService {
@@ -15,14 +16,16 @@ export class PortfolioService {
     private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(TenantEntity)
     private readonly tenantRepository: Repository<TenantEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async createPortfolio(dto: CreatePortfolioDto, userId: string, tenantId: string) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    return this.withTenant(tenantId, async (manager) => {
+    const user = await manager.getRepository(UserEntity).findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const tenant = await this.tenantRepository.findOne({ where: { id: tenantId } });
+    const tenant = await manager.getRepository(TenantEntity).findOne({ where: { id: tenantId } });
     if (!tenant) {
       throw new NotFoundException('Tenant not found');
     }
@@ -33,39 +36,43 @@ export class PortfolioService {
       quantity: asset.quantity ?? 0,
     }));
 
-    const weightSum = normalizedAssets.reduce((sum, asset) => sum + asset.weight, 0);
-    if (Math.abs(weightSum - 1) > 0.0001) {
+    const weightSum = decimalSum(normalizedAssets.map((asset) => asset.weight));
+    if (weightSum.minus(1).abs().greaterThan(decimal('0.0000000001'))) {
       throw new BadRequestException('Portfolio weights must sum to 1.0');
     }
 
-    const portfolio = this.portfolioRepository.create({
+    const portfolio = manager.getRepository(PortfolioEntity).create({
       name: dto.name,
       user,
       tenant,
       assets: normalizedAssets.map((asset) => ({
         symbol: asset.symbol,
-        weight: asset.weight.toFixed(6),
-        quantity: asset.quantity.toFixed(2),
+        weight: toNumericString(asset.weight),
+        quantity: toNumericString(asset.quantity),
       })),
     });
 
-    const saved = await this.portfolioRepository.save(portfolio);
+    const saved = await manager.getRepository(PortfolioEntity).save(portfolio);
 
     return this.toPortfolioResponse(saved);
+    });
   }
 
   async listPortfolios(userId: string, tenantId: string) {
-    const portfolios = await this.portfolioRepository.find({
+    return this.withTenant(tenantId, async (manager) => {
+    const portfolios = await manager.getRepository(PortfolioEntity).find({
       where: { user: { id: userId }, tenant: { id: tenantId } },
       relations: { tenant: true },
       order: { updatedAt: 'DESC' },
     });
 
     return portfolios.map((portfolio) => this.toPortfolioResponse(portfolio));
+    });
   }
 
   async listTenantPortfolios(tenantId: string) {
-    const portfolios = await this.portfolioRepository.find({
+    return this.withTenant(tenantId, async (manager) => {
+    const portfolios = await manager.getRepository(PortfolioEntity).find({
       where: { tenant: { id: tenantId } },
       relations: { tenant: true },
       order: { updatedAt: 'DESC' },
@@ -73,6 +80,7 @@ export class PortfolioService {
     });
 
     return portfolios.map((portfolio) => this.toPortfolioResponse(portfolio));
+    });
   }
 
   async getPortfolioResponse(id: string, userId: string, tenantId: string) {
@@ -80,7 +88,8 @@ export class PortfolioService {
   }
 
   async getPortfolioById(id: string, userId: string, tenantId: string) {
-    const portfolio = await this.portfolioRepository.findOne({
+    return this.withTenant(tenantId, async (manager) => {
+    const portfolio = await manager.getRepository(PortfolioEntity).findOne({
       where: { id, user: { id: userId }, tenant: { id: tenantId } },
       relations: { tenant: true },
     });
@@ -90,6 +99,14 @@ export class PortfolioService {
     }
 
     return portfolio;
+    });
+  }
+
+  private async withTenant<T>(tenantId: string, work: (manager: EntityManager) => Promise<T>) {
+    return this.dataSource.transaction(async (manager) => {
+      await manager.query('SELECT set_config($1, $2, true)', ['app.tenant_id', tenantId]);
+      return work(manager);
+    });
   }
 
   private toPortfolioResponse(portfolio: PortfolioEntity) {

@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Request } from 'express';
 import { UsersService } from '../services/users.service';
 import { TenantService } from '../services/tenant.service';
 import { AuthUser } from './auth-user';
@@ -11,6 +12,7 @@ interface JwtPayload {
   email: string;
   tenantId: string;
   tenantRole: AuthUser['tenantRole'];
+  tokenVersion: number;
 }
 
 @Injectable()
@@ -21,7 +23,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly tenantService: TenantService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: Request) => request?.cookies?.access_token ?? null,
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET', 'dev-only-change-me'),
     });
@@ -31,6 +36,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.usersService.findById(payload.sub);
     if (!user) {
       throw new UnauthorizedException('Invalid session');
+    }
+    if ((payload.tokenVersion ?? 0) !== user.tokenVersion) {
+      throw new UnauthorizedException('Session has been revoked');
     }
     const membership = payload.tenantId
       ? await this.usersService.getTenantMembership(user.id, payload.tenantId)

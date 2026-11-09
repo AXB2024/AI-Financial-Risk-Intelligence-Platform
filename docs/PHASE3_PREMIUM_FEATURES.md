@@ -14,7 +14,7 @@ ML models and algorithms:
 
 Backend changes:
 - Store completed analysis snapshots in `risk_results`.
-- Add `premium_analytics_json` for tail risk, stress, regime, optimization, and sentiment model output.
+- Add `premium_analytics_json` for tail risk, stress, regime, optimization, and finance-domain lexicon screen output.
 - Keep the ML service stateless and version every model response.
 
 Frontend visualization:
@@ -139,9 +139,9 @@ Milestones:
 Compliance and security:
 - Version regime models and keep feature snapshots for auditability.
 
-## 6. Real Financial News Sentiment
+## 6. Financial News Lexicon Screen
 
-Competitive advantage: proprietary sentiment pipelines are defensible when they combine trusted sources, entity mapping, event themes, confidence, and historical outcomes.
+Competitive advantage: news risk screens become more useful when they combine trusted sources, entity mapping, event themes, confidence, and historical outcomes. The current implementation is a lexicon screen, not a sentiment model.
 
 ML models and algorithms:
 - Current: finance-domain lexicon with themes and confidence.
@@ -149,13 +149,13 @@ ML models and algorithms:
 - Future: event extraction for earnings, legal, credit, regulatory, macro, and liquidity themes.
 
 Backend changes:
-- ML endpoint: `POST /financial-sentiment`.
-- Gateway stores sentiment in `premium_analytics_json.financialSentiment`.
+- ML endpoint: `POST /financial-lexicon-screen`.
+- Gateway stores lexicon screen results in `premium_analytics_json.financialSentiment` for backward compatibility.
 - Add future ingestion service for licensed news APIs and RSS feeds.
 
 Frontend visualization:
-- Per-symbol sentiment label, confidence, and themes.
-- Future: article drilldown and sentiment trend over time.
+- Per-symbol lexicon label, confidence, and themes.
+- Future: article drilldown and lexicon trend over time.
 
 Milestones:
 - M1: finance-domain lexicon and source metadata.
@@ -271,7 +271,7 @@ Compliance and security:
 ## Current Phase 3 Implementation
 
 Implemented now:
-- ML endpoints for advanced tail risk, regime detection, portfolio optimization, and financial sentiment.
+- ML endpoints for advanced tail risk, regime detection, portfolio optimization, and financial news lexicon screening.
 - Gateway calls those endpoints during completed analyses.
 - `risk_results.premium_analytics_json` stores premium outputs.
 - Frontend Premium Risk Intelligence panel.

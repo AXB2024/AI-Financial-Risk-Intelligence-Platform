@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 
@@ -17,6 +18,8 @@ async function bootstrap() {
     origin: configuredOrigins,
     credentials: true,
   });
+
+  app.use(cookieParser());
 
   app.use((_req: Request, res: Response, next: NextFunction) => {
     res.setHeader('X-API-Version', '1');

@@ -11,6 +11,12 @@ export class AuditLogEntity {
   @Column({ name: 'tenant_id', type: 'varchar', length: 36, nullable: true })
   tenantId!: string | null;
 
+  @Column({ name: 'api_key_id', type: 'varchar', length: 36, nullable: true })
+  apiKeyId!: string | null;
+
+  @Column({ name: 'actor_type', type: 'varchar', length: 20, default: 'user' })
+  actorType!: 'user' | 'api_key' | 'system';
+
   @Column({ length: 12 })
   method!: string;
 

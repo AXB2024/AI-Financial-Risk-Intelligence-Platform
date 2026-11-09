@@ -18,7 +18,6 @@ export interface AuthUser {
 
 export interface AuthResponse {
   user: AuthUser;
-  accessToken: string;
 }
 
 export interface CreatePortfolioRequest {
@@ -48,7 +47,7 @@ export interface TenantBranding {
   updatedAt: string;
 }
 
-export interface SentimentResult {
+export interface LexiconScreenResult {
   symbol: string;
   score: number;
   label: 'positive' | 'neutral' | 'negative';
@@ -82,10 +81,13 @@ export interface RiskResponse {
     zScore: number;
     detected: boolean;
   };
-  sentiment: SentimentResult[];
+  sentiment: LexiconScreenResult[];
   composition: PortfolioComposition[];
   timeseries: TimeSeriesPoint[];
   premiumAnalytics?: PremiumAnalytics | null;
+  varMethod?: string;
+  modelVersion?: string;
+  modelConfig?: Record<string, unknown> | null;
   generatedAt: string;
 }
 
@@ -98,22 +100,64 @@ export interface PremiumAnalytics {
     max_drawdown: number;
     skewness: number;
     kurtosis: number;
-    stress_scenarios: Array<{ name: string; shock: number; estimated_loss: number }>;
-    model: string;
+    stress_scenarios: Array<{
+      name: string;
+      period: string;
+      source: string;
+      days: number;
+      terminal_return: number;
+      max_loss: number;
+      worst_day: number;
+      method: string;
+    }>;
+    model_version: string;
   };
   regime?: {
     current_regime: 'bull' | 'bear' | 'stressed' | 'sideways';
     probabilities: Record<string, number>;
     features: Record<string, number>;
-    model: string;
+    model_version: string;
+    method: string;
   };
   optimization?: {
     min_variance: Array<{ symbol: string; weight: number }>;
     max_sharpe: Array<{ symbol: string; weight: number }>;
     risk_parity: Array<{ symbol: string; weight: number }>;
-    model: string;
+    model_version: string;
+    deterministic: boolean;
   };
-  financialSentiment?: SentimentResult[];
+  financialSentiment?: LexiconScreenResult[];
+  factorExposures?: {
+    model_version: string;
+    source: string;
+    alpha: number;
+    r_squared: number;
+    exposures: Array<{ factor: string; beta: number }>;
+    periods: number;
+    method: string;
+  };
+  varBacktest?: {
+    model_version: string;
+    method: string;
+    confidence: number;
+    window: number;
+    observations: number;
+    exceptions: number;
+    expected_exceptions: number;
+    observed_exception_rate: number;
+    kupiec_pof: {
+      lr_stat: number;
+      passed_95: boolean;
+      critical_value_95: number;
+    };
+    christoffersen_conditional_coverage: {
+      lr_stat: number;
+      passed_95: boolean;
+      critical_value_95: number;
+    };
+    average_forecast_var: number;
+    average_realized_loss: number;
+  };
 }
 
 export type AnalysisStatusValue = 'pending' | 'processing' | 'completed' | 'failed';

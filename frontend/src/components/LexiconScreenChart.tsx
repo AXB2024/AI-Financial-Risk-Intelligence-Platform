@@ -1,28 +1,28 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { SentimentResult } from '../types';
+import { LexiconScreenResult } from '../types';
 import { Card } from './Card';
 
-interface SentimentBarChartProps {
-  data: SentimentResult[];
+interface LexiconScreenChartProps {
+  data: LexiconScreenResult[];
 }
 
-const sentimentColor: Record<SentimentResult['label'], string> = {
+const lexiconLabelColor: Record<LexiconScreenResult['label'], string> = {
   positive: '#178a55',
   neutral: '#0f6cbd',
   negative: '#c13f35',
 };
 
-export function SentimentBarChart({ data }: SentimentBarChartProps) {
+export function LexiconScreenChart({ data }: LexiconScreenChartProps) {
   if (data.length === 0) {
     return (
-      <Card title="News Sentiment by Symbol" subtitle="Sentiment values appear after analysis.">
-        <p className="text-sm text-slate-500">No sentiment records available.</p>
+      <Card title="News Lexicon Screen by Symbol" subtitle="Lexicon scores appear after analysis.">
+        <p className="text-sm text-slate-500">No lexicon screen records available.</p>
       </Card>
     );
   }
 
   return (
-    <Card title="News Sentiment by Symbol" subtitle="Lexicon-based sentiment score per stock symbol.">
+    <Card title="News Lexicon Screen by Symbol" subtitle="Keyword hits from a finance-domain lexicon, not model sentiment.">
       <div className="h-72 w-full">
         <ResponsiveContainer>
           <BarChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
@@ -38,7 +38,7 @@ export function SentimentBarChart({ data }: SentimentBarChartProps) {
             />
             <Bar dataKey="score" radius={[8, 8, 0, 0]}>
               {data.map((entry) => (
-                <Cell key={entry.symbol} fill={sentimentColor[entry.label]} />
+                <Cell key={entry.symbol} fill={lexiconLabelColor[entry.label]} />
               ))}
             </Bar>
           </BarChart>
@@ -47,13 +47,13 @@ export function SentimentBarChart({ data }: SentimentBarChartProps) {
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
-          <span className="size-2 rounded-full bg-emerald-600" /> Positive
+          <span className="size-2 rounded-full bg-emerald-600" /> Positive terms
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-blue-700">
-          <span className="size-2 rounded-full bg-blue-600" /> Neutral
+          <span className="size-2 rounded-full bg-blue-600" /> Neutral terms
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
-          <span className="size-2 rounded-full bg-rose-600" /> Negative
+          <span className="size-2 rounded-full bg-rose-600" /> Negative terms
         </span>
       </div>
     </Card>

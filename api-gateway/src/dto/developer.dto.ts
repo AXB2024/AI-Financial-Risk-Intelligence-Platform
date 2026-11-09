@@ -1,4 +1,4 @@
-import { ArrayMinSize, IsArray, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateApiKeyDto {
   @IsString()
@@ -15,4 +15,10 @@ export class CreateApiKeyDto {
   @IsOptional()
   @IsString()
   expiresAt?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10000)
+  rateLimitPerMinute?: number;
 }

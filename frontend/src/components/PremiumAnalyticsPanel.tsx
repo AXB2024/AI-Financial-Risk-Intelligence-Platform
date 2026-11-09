@@ -17,20 +17,83 @@ export function PremiumAnalyticsPanel({ analytics }: PremiumAnalyticsPanelProps)
   const tailRisk = analytics.tailRisk;
   const regime = analytics.regime;
   const optimization = analytics.optimization;
-  const financialSentiment = analytics.financialSentiment ?? [];
+  const financialLexiconScreens = analytics.financialSentiment ?? [];
+  const factorExposures = analytics.factorExposures;
+  const varBacktest = analytics.varBacktest;
 
   return (
     <Card
       title="Premium Risk Intelligence"
-      subtitle="Tail exposure, regime context, optimized allocations, and finance-specific sentiment."
+      subtitle="Tail exposure, regime context, optimized allocations, and finance-domain lexicon screening."
       contentClassName="space-y-6"
     >
       {tailRisk ? (
-        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Metric label="VaR 99%" value={percent(tailRisk.var_99)} />
-          <Metric label="CVaR 99%" value={percent(tailRisk.cvar_99)} />
-          <Metric label="Max Drawdown" value={percent(tailRisk.max_drawdown)} />
-          <Metric label="Downside Dev." value={percent(tailRisk.downside_deviation)} />
+        <section className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Metric label="VaR 99%" value={percent(tailRisk.var_99)} />
+            <Metric label="CVaR 99%" value={percent(tailRisk.cvar_99)} />
+            <Metric label="Max Drawdown" value={percent(tailRisk.max_drawdown)} />
+            <Metric label="Downside Dev." value={percent(tailRisk.downside_deviation)} />
+          </div>
+          {tailRisk.stress_scenarios.length > 0 ? (
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-slate-950">Historical Stress Replay</h3>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {tailRisk.stress_scenarios.map((scenario) => (
+                  <div key={scenario.name} className="rounded-xl border border-slate-200 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950">{scenario.name}</p>
+                        <p className="mt-1 text-xs text-slate-500">{scenario.period}</p>
+                      </div>
+                      <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                        {percent(scenario.max_loss)}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <MiniMetric label="Days" value={String(scenario.days)} />
+                      <MiniMetric label="Terminal" value={percent(scenario.terminal_return)} />
+                      <MiniMetric label="Worst Day" value={percent(scenario.worst_day)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {varBacktest ? (
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-slate-950">VaR Backtesting</h3>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-600">
+              Kupiec {varBacktest.kupiec_pof.passed_95 ? 'Pass' : 'Review'} / Christoffersen{' '}
+              {varBacktest.christoffersen_conditional_coverage.passed_95 ? 'Pass' : 'Review'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Metric label="Exceptions" value={`${varBacktest.exceptions}/${varBacktest.observations}`} />
+            <Metric label="Expected" value={varBacktest.expected_exceptions.toFixed(1)} />
+            <Metric label="Observed Rate" value={percent(varBacktest.observed_exception_rate)} />
+            <Metric label="Avg Forecast VaR" value={percent(varBacktest.average_forecast_var)} />
+          </div>
+        </section>
+      ) : null}
+
+      {factorExposures && factorExposures.exposures.length > 0 ? (
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-slate-950">Factor Exposures</h3>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+              R2 {(factorExposures.r_squared * 100).toFixed(1)}%
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+            {factorExposures.exposures.map((exposure) => (
+              <MiniMetric key={exposure.factor} label={exposure.factor.toUpperCase()} value={exposure.beta.toFixed(2)} />
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -72,11 +135,11 @@ export function PremiumAnalyticsPanel({ analytics }: PremiumAnalyticsPanelProps)
         </section>
       ) : null}
 
-      {financialSentiment.length > 0 ? (
+      {financialLexiconScreens.length > 0 ? (
         <section>
-          <h3 className="mb-3 text-sm font-semibold text-slate-950">Financial News Signals</h3>
+          <h3 className="mb-3 text-sm font-semibold text-slate-950">Financial News Lexicon Screen</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {financialSentiment.map((item) => (
+            {financialLexiconScreens.map((item) => (
               <div key={`${item.symbol}-${item.source ?? 'source'}`} className="rounded-xl border border-slate-200 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-slate-950">{item.symbol}</span>
@@ -85,7 +148,7 @@ export function PremiumAnalyticsPanel({ analytics }: PremiumAnalyticsPanelProps)
                   </span>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                  Confidence {percent(item.confidence ?? 0.5)}
+                  Lexicon confidence {percent(item.confidence ?? 0.5)}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {(item.themes ?? ['market']).map((theme) => (
@@ -108,6 +171,15 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
       <p className="text-xs font-semibold text-slate-500">{label}</p>
       <p className="mt-1 text-lg font-bold text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-slate-50 px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-bold text-slate-950">{value}</p>
     </div>
   );
 }

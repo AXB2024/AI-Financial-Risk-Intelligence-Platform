@@ -10,6 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { typeOrmAsyncConfig } from './config/database.config';
 import { AuthController } from './controllers/auth.controller';
+import { DataConnectivityController } from './controllers/data-connectivity.controller';
 import { DeveloperController } from './controllers/developer.controller';
 import { HealthController } from './controllers/health.controller';
 import { IntegrationController } from './controllers/integration.controller';
@@ -21,15 +22,24 @@ import { TenantController } from './controllers/tenant.controller';
 import { AnalysisLogEntity } from './entities/analysis-log.entity';
 import { ApiKeyEntity } from './entities/api-key.entity';
 import { AuditLogEntity } from './entities/audit-log.entity';
+import { CorporateActionEntity } from './entities/corporate-action.entity';
+import { IngestionRunEntity } from './entities/ingestion-run.entity';
 import { IntegrationEntity } from './entities/integration.entity';
 import { PortfolioAssetEntity } from './entities/portfolio-asset.entity';
 import { PortfolioEntity } from './entities/portfolio.entity';
+import { PositionLedgerEntity } from './entities/position-ledger.entity';
+import { QuarantineRecordEntity } from './entities/quarantine-record.entity';
+import { ReconciliationBreakEntity } from './entities/reconciliation-break.entity';
+import { ReconciliationRunEntity } from './entities/reconciliation-run.entity';
+import { RefreshTokenEntity } from './entities/refresh-token.entity';
 import { ReportTemplateEntity } from './entities/report-template.entity';
 import { RiskResultEntity } from './entities/risk-result.entity';
 import { ScheduledExportEntity } from './entities/scheduled-export.entity';
+import { SecurityMasterEntity } from './entities/security-master.entity';
 import { TenantBrandingEntity } from './entities/tenant-branding.entity';
 import { TenantMembershipEntity } from './entities/tenant-membership.entity';
 import { TenantEntity } from './entities/tenant.entity';
+import { TransactionLedgerEntity } from './entities/transaction-ledger.entity';
 import { UserEntity } from './entities/user.entity';
 import { AuditLoggingInterceptor } from './interceptors/audit-logging.interceptor';
 import { ApiKeyService } from './services/api-key.service';
@@ -37,6 +47,7 @@ import { AuthService } from './services/auth.service';
 import { AuditLogService } from './services/audit-log.service';
 import { BackgroundJobService } from './services/background-job.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
+import { DataConnectivityService } from './services/data-connectivity.service';
 import { FinnhubService } from './services/finnhub.service';
 import { LoggingService } from './services/logging.service';
 import { MarketDataService } from './services/market-data.service';
@@ -45,6 +56,7 @@ import { PortfolioService } from './services/portfolio.service';
 import { RedisCacheService } from './services/redis-cache.service';
 import { ReportingService } from './services/reporting.service';
 import { RiskOrchestrationService } from './services/risk-orchestration.service';
+import { SecurityMasterService } from './services/security-master.service';
 import { TenantService } from './services/tenant.service';
 import { UsersService } from './services/users.service';
 import { IntegrationService } from './services/integration.service';
@@ -84,6 +96,15 @@ import { IntegrationService } from './services/integration.service';
       ApiKeyEntity,
       AuditLogEntity,
       IntegrationEntity,
+      SecurityMasterEntity,
+      CorporateActionEntity,
+      IngestionRunEntity,
+      PositionLedgerEntity,
+      TransactionLedgerEntity,
+      QuarantineRecordEntity,
+      ReconciliationRunEntity,
+      ReconciliationBreakEntity,
+      RefreshTokenEntity,
       ReportTemplateEntity,
       ScheduledExportEntity,
       PortfolioEntity,
@@ -94,6 +115,7 @@ import { IntegrationService } from './services/integration.service';
   ],
   controllers: [
     AuthController,
+    DataConnectivityController,
     HealthController,
     PortfolioController,
     RiskController,
@@ -105,6 +127,7 @@ import { IntegrationService } from './services/integration.service';
   ],
   providers: [
     AuthService,
+    DataConnectivityService,
     AuditLogService,
     UsersService,
     TenantService,
@@ -122,6 +145,7 @@ import { IntegrationService } from './services/integration.service';
     },
     PortfolioService,
     RiskOrchestrationService,
+    SecurityMasterService,
     BackgroundJobService,
     RedisCacheService,
     MlClientService,

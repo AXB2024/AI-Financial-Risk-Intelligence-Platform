@@ -33,22 +33,22 @@ export class RiskResultEntity {
   @Column({ name: 'job_id', type: 'varchar', length: 120, nullable: true })
   jobId!: string | null;
 
-  @Column('decimal', { precision: 10, scale: 6, name: 'var_95', nullable: true })
+  @Column('decimal', { precision: 28, scale: 10, name: 'var_95', nullable: true })
   var95!: string | null;
 
-  @Column('decimal', { precision: 10, scale: 6, nullable: true })
+  @Column('decimal', { precision: 28, scale: 10, nullable: true })
   volatility!: string | null;
 
-  @Column('decimal', { precision: 10, scale: 6, name: 'expected_shortfall', nullable: true })
+  @Column('decimal', { precision: 28, scale: 10, name: 'expected_shortfall', nullable: true })
   expectedShortfall!: string | null;
 
-  @Column('decimal', { precision: 16, scale: 2, name: 'portfolio_value', nullable: true })
+  @Column('decimal', { precision: 28, scale: 10, name: 'portfolio_value', nullable: true })
   portfolioValue!: string | null;
 
-  @Column('decimal', { precision: 10, scale: 6, name: 'anomaly_score', nullable: true })
+  @Column('decimal', { precision: 28, scale: 10, name: 'anomaly_score', nullable: true })
   anomalyScore!: string | null;
 
-  @Column({ name: 'anomaly_z_score', type: 'decimal', precision: 10, scale: 6, nullable: true })
+  @Column({ name: 'anomaly_z_score', type: 'decimal', precision: 28, scale: 10, nullable: true })
   anomalyZScore!: string | null;
 
   @Column({ name: 'anomaly_detected', type: 'boolean', nullable: true })
@@ -71,6 +71,12 @@ export class RiskResultEntity {
 
   @Column({ name: 'model_version', type: 'varchar', length: 80, default: 'phase2-local-ml' })
   modelVersion!: string;
+
+  @Column({ name: 'var_method', type: 'varchar', length: 40, default: 'historical' })
+  varMethod!: string;
+
+  @Column({ type: 'jsonb', name: 'model_config_json', nullable: true })
+  modelConfigJson!: unknown | null;
 
   @Column({ name: 'error_code', type: 'varchar', length: 80, nullable: true })
   errorCode!: string | null;

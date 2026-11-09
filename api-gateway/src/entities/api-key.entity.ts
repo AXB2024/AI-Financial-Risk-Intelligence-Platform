@@ -18,14 +18,20 @@ export class ApiKeyEntity {
   @Column({ length: 120 })
   name!: string;
 
-  @Column({ name: 'key_hash', unique: true, length: 64 })
+  @Column({ name: 'key_hash', unique: true, length: 255 })
   keyHash!: string;
 
   @Column({ name: 'key_prefix', length: 16 })
   keyPrefix!: string;
 
+  @Column({ name: 'key_last_four', type: 'varchar', length: 4, nullable: true })
+  keyLastFour!: string | null;
+
   @Column({ type: 'jsonb' })
   scopes!: string[];
+
+  @Column({ name: 'rate_limit_per_minute', type: 'int', default: 120 })
+  rateLimitPerMinute!: number;
 
   @Column({ name: 'last_used_at', type: 'timestamp', nullable: true })
   lastUsedAt!: Date | null;

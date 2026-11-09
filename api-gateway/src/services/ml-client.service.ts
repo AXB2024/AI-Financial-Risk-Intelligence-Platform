@@ -9,6 +9,9 @@ import { firstValueFrom } from 'rxjs';
 
 export interface RiskRequest {
   confidence: number;
+  method?: 'historical' | 'parametric' | 'monte_carlo';
+  seed?: number;
+  simulations?: number;
   weights: number[];
   asset_returns: number[][];
 }
@@ -17,6 +20,18 @@ export interface RiskResponse {
   var_95: number;
   volatility: number;
   expected_shortfall: number;
+  selected_method: string;
+  methods: Record<
+    string,
+    {
+      method: string;
+      var: number;
+      expected_shortfall: number;
+      parameters: Record<string, number | string>;
+    }
+  >;
+  model_version: string;
+  deterministic_seed: number;
 }
 
 export interface AnomalyRequest {
@@ -29,7 +44,7 @@ export interface AnomalyResponse {
   z_score: number;
 }
 
-export interface SentimentRequest {
+export interface LexiconScreenRequest {
   items: Array<{
     symbol: string;
     text: string;
@@ -39,7 +54,7 @@ export interface SentimentRequest {
   }>;
 }
 
-export interface SentimentResponse {
+export interface LexiconScreenResponse {
   results: Array<{
     symbol: string;
     score: number;
@@ -56,6 +71,12 @@ export interface AdvancedAnalyticsRequest {
   symbols: string[];
   weights: number[];
   asset_returns: number[][];
+  historical_scenarios?: Array<{
+    name: string;
+    period: string;
+    source: string;
+    asset_returns: number[][];
+  }>;
 }
 
 export interface TailRiskResponse {
@@ -66,22 +87,80 @@ export interface TailRiskResponse {
   max_drawdown: number;
   skewness: number;
   kurtosis: number;
-  stress_scenarios: Array<{ name: string; shock: number; estimated_loss: number }>;
-  model: string;
+  stress_scenarios: Array<{
+    name: string;
+    period: string;
+    source: string;
+    days: number;
+    terminal_return: number;
+    max_loss: number;
+    worst_day: number;
+    method: string;
+  }>;
+  model_version: string;
 }
 
 export interface RegimeResponse {
   current_regime: 'bull' | 'bear' | 'stressed' | 'sideways';
   probabilities: Record<string, number>;
   features: Record<string, number>;
-  model: string;
+  model_version: string;
+  method: string;
 }
 
 export interface OptimizationResponse {
   min_variance: Array<{ symbol: string; weight: number }>;
   max_sharpe: Array<{ symbol: string; weight: number }>;
   risk_parity: Array<{ symbol: string; weight: number }>;
-  model: string;
+  model_version: string;
+  deterministic: boolean;
+}
+
+export interface FactorExposureRequest {
+  symbols: string[];
+  weights: number[];
+  asset_returns: number[][];
+  factor_returns: Record<string, number[]>;
+}
+
+export interface FactorExposureResponse {
+  model_version: string;
+  source: string;
+  alpha: number;
+  r_squared: number;
+  exposures: Array<{ factor: string; beta: number }>;
+  periods: number;
+  method: string;
+}
+
+export interface VarBacktestRequest {
+  weights: number[];
+  asset_returns: number[][];
+  confidence: number;
+  window: number;
+}
+
+export interface VarBacktestResponse {
+  model_version: string;
+  method: string;
+  confidence: number;
+  window: number;
+  observations: number;
+  exceptions: number;
+  expected_exceptions: number;
+  observed_exception_rate: number;
+  kupiec_pof: {
+    lr_stat: number;
+    passed_95: boolean;
+    critical_value_95: number;
+  };
+  christoffersen_conditional_coverage: {
+    lr_stat: number;
+    passed_95: boolean;
+    critical_value_95: number;
+  };
+  average_forecast_var: number;
+  average_realized_loss: number;
 }
 
 @Injectable()
@@ -99,12 +178,8 @@ export class MlClientService {
     return this.post<AnomalyResponse>('/anomaly', payload);
   }
 
-  async analyzeSentiment(payload: SentimentRequest) {
-    return this.post<SentimentResponse>('/sentiment', payload);
-  }
-
-  async analyzeFinancialSentiment(payload: SentimentRequest) {
-    return this.post<SentimentResponse>('/financial-sentiment', payload);
+  async screenFinancialNewsLexicon(payload: LexiconScreenRequest) {
+    return this.post<LexiconScreenResponse>('/financial-lexicon-screen', payload);
   }
 
   async calculateTailRisk(payload: AdvancedAnalyticsRequest) {
@@ -117,6 +192,14 @@ export class MlClientService {
 
   async optimizePortfolio(payload: AdvancedAnalyticsRequest) {
     return this.post<OptimizationResponse>('/optimize', payload);
+  }
+
+  async calculateFactorExposures(payload: FactorExposureRequest) {
+    return this.post<FactorExposureResponse>('/factor-exposures', payload);
+  }
+
+  async backtestVar(payload: VarBacktestRequest) {
+    return this.post<VarBacktestResponse>('/var-backtest', payload);
   }
 
   private async post<T>(path: string, payload: unknown): Promise<T> {

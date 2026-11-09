@@ -13,28 +13,36 @@ import {
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:4000',
   timeout: 10000,
+  withCredentials: true,
 });
 
 const AUTH_UNAUTHORIZED_EVENT = 'risk-platform-auth-unauthorized';
+let refreshPromise: Promise<void> | null = null;
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
+  async (error) => {
+    const originalRequest = axios.isAxiosError(error) ? error.config : undefined;
+    const isAuthEndpoint = originalRequest?.url?.startsWith('/auth/login') || originalRequest?.url?.startsWith('/auth/register') || originalRequest?.url?.startsWith('/auth/refresh');
+
+    if (axios.isAxiosError(error) && error.response?.status === 401 && originalRequest && !isAuthEndpoint && !(originalRequest as { _retry?: boolean })._retry) {
+      (originalRequest as { _retry?: boolean })._retry = true;
+      refreshPromise ??= api.post('/auth/refresh').then(() => undefined).finally(() => {
+        refreshPromise = null;
+      });
+      try {
+        await refreshPromise;
+        return api(originalRequest);
+      } catch {
+        window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
+      }
+    } else if (axios.isAxiosError(error) && error.response?.status === 401) {
       window.dispatchEvent(new Event(AUTH_UNAUTHORIZED_EVENT));
     }
 
     return Promise.reject(error);
   },
 );
-
-export function setAccessToken(token: string | null) {
-  if (token) {
-    api.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else {
-    delete api.defaults.headers.common.Authorization;
-  }
-}
 
 export function onUnauthorized(handler: () => void) {
   window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handler);
@@ -84,6 +92,10 @@ export async function login(payload: {
 export async function getMe(): Promise<AuthResponse['user']> {
   const response = await api.get<{ user: AuthResponse['user'] }>('/auth/me');
   return response.data.user;
+}
+
+export async function logout(): Promise<void> {
+  await api.post('/auth/logout');
 }
 
 export async function getTenantBranding(): Promise<TenantBranding> {

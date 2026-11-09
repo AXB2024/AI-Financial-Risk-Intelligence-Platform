@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { decimal } from '../utils/round.util';
 import { FinnhubService } from './finnhub.service';
 
 interface AssetForPricing {
@@ -8,6 +9,7 @@ interface AssetForPricing {
 }
 
 const MIN_LIVE_RETURNS_RATIO = 0.5;
+const FACTOR_NAMES = ['mkt_rf', 'smb', 'hml', 'rmw', 'cma', 'mom'] as const;
 
 @Injectable()
 export class MarketDataService {
@@ -60,6 +62,77 @@ export class MarketDataService {
     return this.generateSyntheticReturns(symbol, periods);
   }
 
+  async getHistoricalScenarioReturns(symbols: string[]) {
+    const episodes = [
+      {
+        name: 'GFC 2008',
+        period: '2008-09-15 to 2009-03-09',
+        from: '2008-09-15',
+        to: '2009-03-09',
+        days: 126,
+        severity: 1.45,
+        rebound: 0.18,
+      },
+      {
+        name: 'March 2020 COVID Shock',
+        period: '2020-02-19 to 2020-03-23',
+        from: '2020-02-19',
+        to: '2020-03-23',
+        days: 24,
+        severity: 1.85,
+        rebound: 0.34,
+      },
+      {
+        name: '2022 Rate Shock',
+        period: '2022-01-03 to 2022-10-14',
+        from: '2022-01-03',
+        to: '2022-10-14',
+        days: 198,
+        severity: 0.95,
+        rebound: 0.06,
+      },
+      {
+        name: 'Feb 2018 Volmageddon',
+        period: '2018-02-01 to 2018-02-09',
+        from: '2018-02-01',
+        to: '2018-02-09',
+        days: 7,
+        severity: 1.25,
+        rebound: 0.12,
+      },
+    ];
+
+    return Promise.all(
+      episodes.map(async (episode) => {
+        const liveReturns = await Promise.all(
+          symbols.map((symbol) =>
+            this.finnhubService.getDailyReturnsForRange(symbol.toUpperCase(), episode.from, episode.to),
+          ),
+        );
+        const hasCompleteLiveWindow = liveReturns.every((returns) => returns && returns.length >= 4);
+        const assetReturns = hasCompleteLiveWindow
+          ? this.alignReturnVectors(liveReturns as number[][])
+          : symbols.map((symbol) =>
+              this.generateHistoricalEpisodePath(symbol, episode.days, episode.severity, episode.rebound),
+            );
+
+        return {
+          name: episode.name,
+          period: episode.period,
+          source: hasCompleteLiveWindow ? 'finnhub_daily_candles' : 'deterministic_local_fallback',
+          asset_returns: assetReturns,
+        };
+      }),
+    );
+  }
+
+  async getFactorReturns(periods: number): Promise<Record<string, number[]>> {
+    return FACTOR_NAMES.reduce<Record<string, number[]>>((result, factorName, idx) => {
+      result[factorName] = this.generateDeterministicFactorReturns(factorName, periods, idx);
+      return result;
+    }, {});
+  }
+
   async calculatePortfolioValue(assets: AssetForPricing[]): Promise<number> {
     const hasExplicitQuantities = assets.some((asset) => asset.quantity > 0);
     if (!hasExplicitQuantities) {
@@ -68,10 +141,10 @@ export class MarketDataService {
 
     const prices = await Promise.all(assets.map((asset) => this.getPrice(asset.symbol)));
     const total = assets.reduce(
-      (sum, asset, idx) => sum + prices[idx] * Math.max(asset.quantity, 0),
-      0,
+      (sum, asset, idx) => sum.plus(decimal(prices[idx]).times(Math.max(asset.quantity, 0))),
+      decimal(0),
     );
-    return Number(total.toFixed(2));
+    return total.toDecimalPlaces(10).toNumber();
   }
 
   buildPortfolioSeries(
@@ -90,7 +163,7 @@ export class MarketDataService {
         0,
       );
       currentValue *= 1 + weightedReturn;
-      series.push(Number(currentValue.toFixed(2)));
+      series.push(decimal(currentValue).toDecimalPlaces(10).toNumber());
     }
 
     return series;
@@ -110,7 +183,7 @@ export class MarketDataService {
         const texts =
           this.mockNewsBySymbol[upperSymbol] ?? [
             `${upperSymbol} receives mixed analyst commentary after recent earnings.`,
-            `${upperSymbol} faces changing macro conditions impacting investor sentiment.`,
+            `${upperSymbol} faces changing macro conditions impacting investor positioning.`,
           ];
         return texts.map((text) => ({ symbol: upperSymbol, text }));
       }),
@@ -142,6 +215,47 @@ export class MarketDataService {
 
       return Number(Math.max(-0.15, Math.min(0.15, value)).toFixed(6));
     });
+  }
+
+  private generateHistoricalEpisodePath(
+    symbol: string,
+    days: number,
+    severity: number,
+    rebound: number,
+  ): number[] {
+    const seed = this.getSeed(symbol);
+    const beta = 0.75 + (seed % 9) / 10;
+    const qualityOffset = ((seed % 7) - 3) / 1000;
+
+    return Array.from({ length: days }, (_, i) => {
+      const progress = days === 1 ? 1 : i / (days - 1);
+      const selloffWave = -0.012 * severity * beta * Math.exp(-Math.pow((progress - 0.35) / 0.28, 2));
+      const liquidityGap = i % Math.max(3, Math.floor(days / 9)) === 0 ? -0.018 * severity * beta : 0;
+      const reboundWave = progress > 0.68 ? 0.006 * rebound * beta * Math.sin(progress * Math.PI) : 0;
+      const idiosyncratic = Math.sin(seed * 0.17 + i * 0.61) * 0.0025 + qualityOffset;
+      const value = selloffWave + liquidityGap + reboundWave + idiosyncratic;
+
+      return Number(Math.max(-0.28, Math.min(0.18, value)).toFixed(6));
+    });
+  }
+
+  private generateDeterministicFactorReturns(
+    factorName: (typeof FACTOR_NAMES)[number],
+    periods: number,
+    index: number,
+  ): number[] {
+    const seed = this.getSeed(factorName);
+    return Array.from({ length: periods }, (_, i) => {
+      const cycle = Math.sin((i + seed) / (11 + index)) * (0.0035 + index * 0.0002);
+      const macro = Math.cos((i + 1) / (29 - index)) * (0.0025 + index * 0.0001);
+      const episodic = i > 0 && i % (61 + index * 3) === 0 ? -0.012 + index * 0.001 : 0;
+      return Number((cycle + macro + episodic).toFixed(6));
+    });
+  }
+
+  private alignReturnVectors(returnsByAsset: number[][]): number[][] {
+    const periods = Math.min(...returnsByAsset.map((returns) => returns.length));
+    return returnsByAsset.map((returns) => returns.slice(-periods));
   }
 
   private getSeed(symbol: string): number {

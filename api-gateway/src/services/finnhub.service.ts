@@ -118,6 +118,51 @@ export class FinnhubService {
     }
   }
 
+  async getDailyReturnsForRange(symbol: string, fromDate: string, toDate: string): Promise<number[] | null> {
+    if (!this.apiKey) {
+      return null;
+    }
+
+    const cacheKey = `finnhub:candles:${symbol}:${fromDate}:${toDate}`;
+    const cached = await this.cacheService.getJson<{ returns: number[] }>(cacheKey);
+    if (cached) {
+      return cached.returns;
+    }
+
+    const from = Math.floor(new Date(`${fromDate}T00:00:00Z`).getTime() / 1000);
+    const to = Math.floor(new Date(`${toDate}T23:59:59Z`).getTime() / 1000);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) {
+      return null;
+    }
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get<FinnhubCandleResponse>(`${this.baseUrl}/stock/candle`, {
+          params: { symbol, resolution: 'D', from, to, token: this.apiKey },
+          timeout: 5000,
+        }),
+      );
+
+      if (!data || data.s !== 'ok' || !Array.isArray(data.c) || data.c.length < 2) {
+        return null;
+      }
+
+      const returns: number[] = [];
+      for (let i = 1; i < data.c.length; i += 1) {
+        const prevClose = data.c[i - 1];
+        if (prevClose > 0) {
+          returns.push(Number(((data.c[i] - prevClose) / prevClose).toFixed(6)));
+        }
+      }
+
+      await this.cacheService.setJson(cacheKey, { returns }, CANDLE_TTL_SECONDS);
+      return returns;
+    } catch (error) {
+      this.logWarning('historical candle', symbol, error);
+      return null;
+    }
+  }
+
   async getCompanyNews(symbol: string): Promise<FinnhubNewsItem[] | null> {
     if (!this.apiKey) {
       return null;

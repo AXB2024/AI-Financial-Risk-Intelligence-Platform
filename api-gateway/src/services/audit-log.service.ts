@@ -6,6 +6,8 @@ import { AuditLogEntity } from '../entities/audit-log.entity';
 interface AuditLogInput {
   userId: string | null;
   tenantId: string | null;
+  apiKeyId?: string | null;
+  actorType?: 'user' | 'api_key' | 'system';
   method: string;
   path: string;
   statusCode: number;
@@ -25,7 +27,11 @@ export class AuditLogService {
 
   async record(input: AuditLogInput): Promise<void> {
     try {
-      await this.auditLogRepository.save(this.auditLogRepository.create(input));
+      await this.auditLogRepository.save(this.auditLogRepository.create({
+        ...input,
+        apiKeyId: input.apiKeyId ?? null,
+        actorType: input.actorType ?? 'user',
+      }));
     } catch (error) {
       this.logger.warn(`Failed to write audit log: ${error instanceof Error ? error.message : error}`);
     }

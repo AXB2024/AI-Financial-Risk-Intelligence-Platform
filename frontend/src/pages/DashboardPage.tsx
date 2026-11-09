@@ -11,7 +11,7 @@ import { PortfolioForm } from '../components/PortfolioForm';
 import { PremiumAnalyticsPanel } from '../components/PremiumAnalyticsPanel';
 import { RiskLineChart } from '../components/RiskLineChart';
 import { SavedPortfolios } from '../components/SavedPortfolios';
-import { SentimentBarChart } from '../components/SentimentBarChart';
+import { LexiconScreenChart } from '../components/LexiconScreenChart';
 import {
   createAnalysis,
   createPortfolio,
@@ -219,7 +219,7 @@ export function DashboardPage() {
 
               <RiskLineChart data={risk.timeseries} />
               <PremiumAnalyticsPanel analytics={risk.premiumAnalytics} />
-              <SentimentBarChart data={risk.sentiment} />
+              <LexiconScreenChart data={risk.sentiment} />
               <CompositionTable data={risk.composition} />
             </>
           ) : (

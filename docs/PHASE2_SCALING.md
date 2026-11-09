@@ -25,7 +25,7 @@ Production cloud: AWS ALB + ECS Fargate or EKS for API Gateway replicas, CloudWa
 
 ## 2. Asynchronous ML Processing
 
-Problem solved: users should not wait on VaR, anomaly, and sentiment calls inside a single HTTP request.
+Problem solved: users should not wait on VaR, anomaly, and lexicon-screen calls inside a single HTTP request.
 
 Architecture: the gateway creates analysis records and enqueues background jobs. Workers execute ML calls, persist result snapshots, and mark jobs complete.
 

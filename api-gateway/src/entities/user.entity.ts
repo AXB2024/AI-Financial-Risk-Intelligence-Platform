@@ -37,6 +37,9 @@ export class UserEntity {
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
   lastLoginAt!: Date | null;
 
+  @Column({ name: 'token_version', type: 'int', default: 0 })
+  tokenVersion!: number;
+
   @OneToMany(() => PortfolioEntity, (portfolio) => portfolio.user)
   portfolios!: PortfolioEntity[];
 
